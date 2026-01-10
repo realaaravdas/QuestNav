@@ -97,6 +97,8 @@ jobs:
       needs.detect-changes.outputs.proto-changed == 'true' ||
       needs.detect-changes.outputs.java-changed == 'true'
     needs: [detect-changes]
+    permissions:
+      contents: read
     uses: ./.github/workflows/reusable-build-proto-cpp.yml
 
 # ----------------------- C# ----------------------- #
