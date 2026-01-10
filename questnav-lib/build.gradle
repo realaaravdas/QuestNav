@@ -1,7 +1,9 @@
 plugins {
     id 'java'
+    id 'cpp'
     id 'maven-publish'
     id 'edu.wpi.first.GradleRIO' version '2025.3.2'
+    id 'edu.wpi.first.NativeUtils' version '2025.3.2'
     id 'com.diffplug.spotless' version '6.20.0'
 }
 
@@ -68,6 +70,62 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+// C++ Configuration
+apply plugin: 'edu.wpi.first.NativeUtils'
+
+model {
+    components {
+        questnavlib(NativeLibrarySpec) {
+            targetPlatform wpi.platforms.roborio
+            targetPlatform wpi.platforms.linuxathena
+            targetPlatform wpi.platforms.linuxarm32
+            targetPlatform wpi.platforms.linuxarm64
+            targetPlatform wpi.platforms.osxuniversal
+            targetPlatform wpi.platforms.windowsx86-64
+            targetPlatform wpi.platforms.linuxx86-64
+
+            sources {
+                cpp {
+                    source {
+                        srcDirs = ['src/main/native/cpp']
+                        include '**/*.cpp', '**/*.cc'
+                    }
+                    exportedHeaders {
+                        srcDirs = ['src/main/native/include']
+                        include '**/*.h', '**/*.hpp'
+                    }
+                }
+            }
+
+            binaries.all {
+                lib project: ':wpilibc', library: 'wpilibc', linkage: 'shared'
+                lib project: ':wpilib', library: 'wpilib', linkage: 'shared'
+                lib project: ':wpilibc', library: 'wpilibc', linkage: 'static'
+                lib project: ':wpimath', library: 'wpimath', linkage: 'shared'
+                lib project: ':wpinet', library: 'wpinet', linkage: 'shared'
+                lib project: ':wpiutil', library: 'wpiutil', linkage: 'shared'
+                lib project: ':ntcore', library: 'ntcore', linkage: 'shared'
+                lib project: ':cscore', library: 'cscore', linkage: 'shared'
+                lib project: ':hal', library: 'hal', linkage: 'shared'
+                
+                // Protobuf library
+                if (toolChain in [Gcc, Clang]) {
+                    cppCompiler.args '-std=c++20'
+                    cppCompiler.args '-Wno-unused-parameter'
+                    linker.args '-lprotobuf'
+                } else if (toolChain in VisualCpp) {
+                    cppCompiler.args '/std:c++20'
+                }
+            }
+        }
+    }
+}
+
+ext {
+    nativeName = 'questnavlib'
+}
+
 
 test {
     useJUnitPlatform()
