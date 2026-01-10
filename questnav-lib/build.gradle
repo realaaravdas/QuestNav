@@ -90,6 +90,7 @@ model {
                     source {
                         srcDirs = ['src/main/native/cpp']
                         include '**/*.cpp', '**/*.cc'
+                        exclude 'examples/**'
                     }
                     exportedHeaders {
                         srcDirs = ['src/main/native/include']
@@ -99,23 +100,18 @@ model {
             }
 
             binaries.all {
-                lib project: ':wpilibc', library: 'wpilibc', linkage: 'shared'
-                lib project: ':wpilib', library: 'wpilib', linkage: 'shared'
-                lib project: ':wpilibc', library: 'wpilibc', linkage: 'static'
-                lib project: ':wpimath', library: 'wpimath', linkage: 'shared'
-                lib project: ':wpinet', library: 'wpinet', linkage: 'shared'
-                lib project: ':wpiutil', library: 'wpiutil', linkage: 'shared'
-                lib project: ':ntcore', library: 'ntcore', linkage: 'shared'
-                lib project: ':cscore', library: 'cscore', linkage: 'shared'
-                lib project: ':hal', library: 'hal', linkage: 'shared'
+                // WPILib dependencies - these will be provided by the robot project
+                nativeUtils.useRequiredLibrary(it, 'wpilib_shared')
                 
-                // Protobuf library
+                // Compiler flags
                 if (toolChain in [Gcc, Clang]) {
                     cppCompiler.args '-std=c++20'
                     cppCompiler.args '-Wno-unused-parameter'
+                    cppCompiler.args '-Wno-deprecated-declarations'
                     linker.args '-lprotobuf'
                 } else if (toolChain in VisualCpp) {
                     cppCompiler.args '/std:c++20'
+                    linker.args 'libprotobuf.lib'
                 }
             }
         }
@@ -186,8 +182,8 @@ publishing {
             from components.java
 
             pom {
-                name = 'QuestNavLib'
-                description = 'QuestNav vendor dependency library'
+                name = 'QuestNavLib Java'
+                description = 'QuestNav vendor dependency library for Java'
                 url = 'https://github.com/questnav/questnav/tree/main/questnav-lib'
 
                 licenses {
@@ -250,6 +246,23 @@ publishing {
 
         // For local testing
         mavenLocal()
+    }
+}
+
+// C++ publishing via nativeUtils
+model {
+    publishing {
+        publications {
+            questnavlibCpp(MavenPublication) {
+                groupId mavenGroupId
+                artifactId 'questnavlib-cpp'
+                version project.version
+                
+                artifact nativeUtils.getPublishArtifact($.components.questnavlib) {
+                    classifier wpi.platforms.desktop.platformName
+                }
+            }
+        }
     }
 }
 
