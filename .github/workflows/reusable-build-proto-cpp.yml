@@ -1,0 +1,61 @@
+name: Build Proto (C++)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version string to use (optional, auto-generated if not provided)'
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          sparse-checkout: |
+            questnav-lib
+            protos
+            .github
+          sparse-checkout-cone-mode: false
+
+      - name: Determine Version
+        id: version-info
+        uses: ./.github/actions/determine-version
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate C++ Proto Files
+        run: |
+          mkdir -p questnav-lib/src/main/native/include
+          mkdir -p questnav-lib/src/main/native/cpp
+          protoc --proto_path=protos \
+                 --cpp_out=questnav-lib/src/main/native/include \
+                 protos/*.proto
+          # Move .cc files to cpp directory
+          mv questnav-lib/src/main/native/include/*.pb.cc questnav-lib/src/main/native/cpp/
+
+      - name: Upload Generated Proto Files (Headers)
+        uses: actions/upload-artifact@v4
+        with:
+          name: questnav-proto-cpp-headers-${{ steps.version-info.outputs.version }}
+          path: questnav-lib/src/main/native/include/*.pb.h
+          retention-days: 7
+
+      - name: Upload Generated Proto Files (Sources)
+        uses: actions/upload-artifact@v4
+        with:
+          name: questnav-proto-cpp-sources-${{ steps.version-info.outputs.version }}
+          path: questnav-lib/src/main/native/cpp/*.pb.cc
+          retention-days: 7
