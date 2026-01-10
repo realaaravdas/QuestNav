@@ -43,6 +43,15 @@ QuestNav implements a simple bidirectional communication structure between the V
 - Ping functionality
 - Real-time pose data streaming
 
+## Language Support
+
+QuestNav provides vendor libraries for both **Java** and **C++** robot code:
+
+- **Java**: Full-featured library with NetworkTables integration and WPILib geometry support
+- **C++**: Complete C++ implementation with API parity to Java, using modern C++20 features
+
+Both libraries provide the same functionality and can be used interchangeably based on your team's preference.
+
 ## Demo Video
 
 Check out this demo video to see QuestNav in action:
