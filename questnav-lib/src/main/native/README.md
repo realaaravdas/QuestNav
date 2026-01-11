@@ -119,14 +119,24 @@ The QuestNav C++ library depends on:
 
 2. **Protocol Buffers (protobuf)** - Required for NetworkTables communication
    - The protobuf library must be available on your system
-   - For RoboRIO: Install via `roboRIO toolchain`
-   - For desktop: Install via package manager (`apt install libprotobuf-dev` on Ubuntu, `brew install protobuf` on macOS)
+   - For RoboRIO: Protobuf is typically included with the WPILib toolchain. If not available, you may need to cross-compile it for the RoboRIO architecture or use a vendor dependency that includes it
+   - For desktop simulation: Install via package manager (`apt install libprotobuf-dev` on Ubuntu, `brew install protobuf` on macOS)
+   - On Windows: Download prebuilt binaries from the [Protocol Buffers releases page](https://github.com/protocolbuffers/protobuf/releases)
 
 #### Compilation Requirements
 
 - **C++20 or later**: The library uses modern C++20 features
-- **Compiler flags**: Add `-std=c++20` (GCC/Clang) or `/std:c++20` (MSVC) to your build configuration
-- These flags should already be set in a standard FRC C++ project using GradleRIO 2025+
+- **Compiler flags**: Your FRC robot project's build.gradle should already configure C++20 (standard in FRC 2025+ projects using GradleRIO 2025.3.2+)
+- If you need to manually set compiler flags, add to your build.gradle under the `frcUserProgram` binary configuration:
+  ```gradle
+  binaries.all {
+      if (toolChain in [Gcc, Clang]) {
+          cppCompiler.args '-std=c++20'
+      } else if (toolChain in VisualCpp) {
+          cppCompiler.args '/std:c++20'
+      }
+  }
+  ```
 
 #### Installation Steps
 
