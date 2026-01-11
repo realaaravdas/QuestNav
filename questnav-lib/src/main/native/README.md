@@ -34,7 +34,7 @@ If you need to install the QuestNav C++ library manually without using the Maven
 
 You'll need to copy the following files from this repository to your FRC robot project:
 
-**Header Files** (copy to `src/main/native/include/`):
+**Header Files** (copy to `src/main/include/` in your robot project):
 - `questnav-lib/src/main/native/include/questnav/QuestNav.h`
 - `questnav-lib/src/main/native/include/questnav/PoseFrame.h`
 - `questnav-lib/src/main/native/include/commands.pb.h`
@@ -42,7 +42,7 @@ You'll need to copy the following files from this repository to your FRC robot p
 - `questnav-lib/src/main/native/include/geometry2d.pb.h`
 - `questnav-lib/src/main/native/include/geometry3d.pb.h`
 
-**Source Files** (copy to `src/main/native/cpp/`):
+**Source Files** (copy to `src/main/cpp/` in your robot project):
 - `questnav-lib/src/main/native/cpp/QuestNav.cpp`
 - `questnav-lib/src/main/native/cpp/commands.pb.cc`
 - `questnav-lib/src/main/native/cpp/data.pb.cc`
@@ -64,15 +64,14 @@ your-robot-project/
 │       │   ├── data.pb.cc
 │       │   ├── geometry2d.pb.cc
 │       │   └── geometry3d.pb.cc
-│       └── native/
-│           └── include/
-│               ├── questnav/
-│               │   ├── QuestNav.h     # Main QuestNav header
-│               │   └── PoseFrame.h    # PoseFrame data structure
-│               ├── commands.pb.h      # Protobuf generated headers
-│               ├── data.pb.h
-│               ├── geometry2d.pb.h
-│               └── geometry3d.pb.h
+│       └── include/
+│           ├── questnav/
+│           │   ├── QuestNav.h     # Main QuestNav header
+│           │   └── PoseFrame.h    # PoseFrame data structure
+│           ├── commands.pb.h      # Protobuf generated headers
+│           ├── data.pb.h
+│           ├── geometry2d.pb.h
+│           └── geometry3d.pb.h
 └── build.gradle
 ```
 
@@ -140,8 +139,8 @@ The QuestNav C++ library depends on:
 2. **Copy header files to your project**:
    ```bash
    # From the QuestNav repository root
-   cp -r questnav-lib/src/main/native/include/questnav/ your-robot-project/src/main/native/include/
-   cp questnav-lib/src/main/native/include/*.pb.h your-robot-project/src/main/native/include/
+   cp -r questnav-lib/src/main/native/include/questnav/ your-robot-project/src/main/include/
+   cp questnav-lib/src/main/native/include/*.pb.h your-robot-project/src/main/include/
    ```
 
 3. **Copy source files to your project**:
@@ -175,7 +174,7 @@ If the build succeeds and you can access the QuestNav class, the manual installa
 #### Troubleshooting Manual Installation
 
 - **"protobuf library not found"**: Ensure protobuf is installed on your system and the library path is correctly configured in build.gradle
-- **"QuestNav.h not found"**: Check that header files are in `src/main/native/include/questnav/`
+- **"QuestNav.h not found"**: Check that header files are in `src/main/include/questnav/`
 - **"undefined reference to protobuf symbols"**: Verify protobuf library is linked in your build.gradle
 - **C++20 compile errors**: Ensure your project is configured to use C++20 (standard in FRC 2025+)
 
