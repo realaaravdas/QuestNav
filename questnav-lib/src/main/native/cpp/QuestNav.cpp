@@ -1,12 +1,3 @@
-/*
- * QUESTNAV
-   https://github.com/QuestNav
- * Copyright (C) 2025 QuestNav
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the MIT License as published.
- */
-
 #include "questnav/QuestNav.h"
 
 #include <frc/DriverStation.h>
@@ -21,70 +12,43 @@ QuestNav::QuestNav() : m_ntInstance(nt::NetworkTableInstance::GetDefault()) {
   auto questNavTable = m_ntInstance.GetTable("QuestNav");
 
   // Initialize subscribers
-  m_frameDataSubscriber = std::make_unique<nt::ProtobufSubscriber<
-      questnav::protos::data::ProtobufQuestNavFrameData>>(
+  m_frameDataSubscriber = std::make_unique<nt::StructSubscriber<questnav::QuestNavFrameData>>(
       questNavTable
-          ->GetProtobufTopic<questnav::protos::data::ProtobufQuestNavFrameData>(
-              "frameData")
-          .Subscribe(questnav::protos::data::ProtobufQuestNavFrameData(),
+          ->GetStructTopic<questnav::QuestNavFrameData>("frameData")
+          .Subscribe(questnav::QuestNavFrameData{},
                      {.periodic = 0.01,
                       .sendAll = true,
                       .pollStorage = 20}));
 
-  m_deviceDataSubscriber = std::make_unique<nt::ProtobufSubscriber<
-      questnav::protos::data::ProtobufQuestNavDeviceData>>(
+  m_deviceDataSubscriber = std::make_unique<nt::StructSubscriber<questnav::QuestNavDeviceData>>(
       questNavTable
-          ->GetProtobufTopic<
-              questnav::protos::data::ProtobufQuestNavDeviceData>("deviceData")
-          .Subscribe(questnav::protos::data::ProtobufQuestNavDeviceData()));
+          ->GetStructTopic<questnav::QuestNavDeviceData>("deviceData")
+          .Subscribe(questnav::QuestNavDeviceData{}));
 
-  m_responseSubscriber = std::make_unique<nt::ProtobufSubscriber<
-      questnav::protos::commands::ProtobufQuestNavCommandResponse>>(
+  m_responseSubscriber = std::make_unique<nt::StructSubscriber<questnav::QuestNavCommandResponse>>(
       questNavTable
-          ->GetProtobufTopic<
-              questnav::protos::commands::ProtobufQuestNavCommandResponse>(
-              "response")
+          ->GetStructTopic<questnav::QuestNavCommandResponse>("response")
           .Subscribe(
-              questnav::protos::commands::ProtobufQuestNavCommandResponse(),
+              questnav::QuestNavCommandResponse{},
               {.periodic = 0.05, .sendAll = true, .pollStorage = 20}));
 
   m_versionSubscriber = std::make_unique<nt::StringSubscriber>(
       questNavTable->GetStringTopic("version").Subscribe("unknown"));
 
   // Initialize publisher
-  m_requestPublisher = std::make_unique<nt::ProtobufPublisher<
-      questnav::protos::commands::ProtobufQuestNavCommand>>(
+  m_requestPublisher = std::make_unique<nt::StructPublisher<questnav::QuestNavCommand>>(
       questNavTable
-          ->GetProtobufTopic<questnav::protos::commands::ProtobufQuestNavCommand>(
-              "request")
+          ->GetStructTopic<questnav::QuestNavCommand>("request")
           .Publish());
 }
 
 QuestNav::~QuestNav() = default;
 
 void QuestNav::SetPose(const frc::Pose3d& pose) {
-  questnav::protos::commands::ProtobufQuestNavCommand command;
-  command.set_type(questnav::protos::commands::POSE_RESET);
-  command.set_command_id(++m_lastSentRequestId);
-
-  auto* payload = command.mutable_pose_reset_payload();
-  auto* targetPose = payload->mutable_target_pose();
-
-  // Convert frc::Pose3d to protobuf
-  auto translation = pose.Translation();
-  auto* protoTranslation = targetPose->mutable_translation();
-  protoTranslation->set_x(translation.X().value());
-  protoTranslation->set_y(translation.Y().value());
-  protoTranslation->set_z(translation.Z().value());
-
-  auto rotation = pose.Rotation();
-  auto quaternion = rotation.GetQuaternion();
-  auto* protoRotation = targetPose->mutable_rotation();
-  auto* protoQuaternion = protoRotation->mutable_q();
-  protoQuaternion->set_w(quaternion.W());
-  protoQuaternion->set_x(quaternion.X());
-  protoQuaternion->set_y(quaternion.Y());
-  protoQuaternion->set_z(quaternion.Z());
+  questnav::QuestNavCommand command;
+  command.type = questnav::QuestNavCommandType::PoseReset;
+  command.commandId = ++m_lastSentRequestId;
+  command.targetPose = pose;
 
   m_requestPublisher->Set(command);
 }
@@ -93,26 +57,31 @@ void QuestNav::SetPose(const frc::Pose2d& pose) {
   SetPose(frc::Pose3d(pose));
 }
 
-std::optional<int> QuestNav::GetBatteryPercent() const {
+std::optional<double> QuestNav::GetBatteryPercent() const {
   auto deviceData = m_deviceDataSubscriber->Get();
-  if (deviceData) {
-    return deviceData->battery_percent();
+  // Check if data is fresh enough or valid (simplest check is just availability in topic)
+  // For struct subscriber, Get() returns the value or default. 
+  // To check existence we might want to check timestamp, but strict optional isn't direct
+  // relying on topic existence check or default values.
+  // Here we return the value if the topic exists and has value.
+  if (m_deviceDataSubscriber->GetTopic().Exists()) {
+      return deviceData.batteryPercent;
   }
   return std::nullopt;
 }
 
 std::optional<int> QuestNav::GetFrameCount() const {
   auto frameData = m_frameDataSubscriber->Get();
-  if (frameData) {
-    return frameData->frame_count();
+  if (m_frameDataSubscriber->GetTopic().Exists()) {
+    return frameData.frameCount;
   }
   return std::nullopt;
 }
 
 std::optional<int> QuestNav::GetTrackingLostCounter() const {
   auto deviceData = m_deviceDataSubscriber->Get();
-  if (deviceData) {
-    return deviceData->tracking_lost_counter();
+  if (m_deviceDataSubscriber->GetTopic().Exists()) {
+    return deviceData.trackingLostCounter;
   }
   return std::nullopt;
 }
@@ -137,16 +106,16 @@ double QuestNav::GetLatency() const {
 
 std::optional<double> QuestNav::GetAppTimestamp() const {
   auto frameData = m_frameDataSubscriber->Get();
-  if (frameData) {
-    return frameData->timestamp();
+  if (m_frameDataSubscriber->GetTopic().Exists()) {
+    return frameData.timestamp;
   }
   return std::nullopt;
 }
 
 bool QuestNav::IsTracking() const {
   auto frameData = m_frameDataSubscriber->Get();
-  if (frameData) {
-    return frameData->istracking();
+  if (m_frameDataSubscriber->GetTopic().Exists()) {
+    return frameData.isTracking;
   }
   return false;  // Return false if no data for failsafe
 }
@@ -158,29 +127,16 @@ std::vector<PoseFrame> QuestNav::GetAllUnreadPoseFrames() {
   for (const auto& timestampedData : frameDataArray) {
     const auto& frameData = timestampedData.value;
 
-    // Convert protobuf pose to frc::Pose3d
-    const auto& protoPose = frameData.pose3d();
-    const auto& protoTranslation = protoPose.translation();
-    const auto& protoRotation = protoPose.rotation();
-    const auto& protoQuaternion = protoRotation.q();
-
-    frc::Translation3d translation{units::meter_t{protoTranslation.x()},
-                                   units::meter_t{protoTranslation.y()},
-                                   units::meter_t{protoTranslation.z()}};
-
-    frc::Rotation3d rotation{frc::Quaternion{
-        protoQuaternion.w(), protoQuaternion.x(), protoQuaternion.y(),
-        protoQuaternion.z()}};
-
-    frc::Pose3d pose{translation, rotation};
+    // Direct struct access, no protobuf conversion needed
+    frc::Pose3d pose = frameData.pose;
 
     // Convert server timestamp from microseconds to seconds
     double dataTimestamp =
         units::second_t(units::microsecond_t(timestampedData.serverTime))
             .value();
 
-    result.emplace_back(pose, dataTimestamp, frameData.timestamp(),
-                        frameData.frame_count(), frameData.istracking());
+    result.emplace_back(pose, dataTimestamp, frameData.timestamp,
+                        frameData.frameCount, frameData.isTracking);
   }
 
   return result;
@@ -192,9 +148,9 @@ void QuestNav::CommandPeriodic() {
   auto responses = m_responseSubscriber->ReadQueue();
   for (const auto& timestampedResponse : responses) {
     const auto& response = timestampedResponse.value;
-    if (!response.success()) {
+    if (!response.success) {
       frc::DriverStation::ReportError(
-          fmt::format("QuestNav command failed!\n{}", response.error_message()));
+          fmt::format("QuestNav command failed!\n{}", response.errorMessage));
     }
   }
 }

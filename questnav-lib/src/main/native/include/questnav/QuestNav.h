@@ -12,7 +12,7 @@
 #include <frc/geometry/Pose2d.h>
 #include <frc/geometry/Pose3d.h>
 #include <networktables/NetworkTableInstance.h>
-#include <networktables/ProtobufTopic.h>
+#include <networktables/StructTopic.h>
 #include <networktables/StringTopic.h>
 
 #include <memory>
@@ -20,9 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "commands.pb.h"
-#include "data.pb.h"
-#include "geometry3d.pb.h"
+#include "questnav/QuestNavStructs.h"
 #include "questnav/PoseFrame.h"
 
 namespace questnav {
@@ -153,7 +151,7 @@ class QuestNav {
    *         std::nullopt if no device data is available or Quest is
    *         disconnected
    */
-  std::optional<int> GetBatteryPercent() const;
+  std::optional<double> GetBatteryPercent() const;
 
   /**
    * Gets the current frame count from the Quest headset.
@@ -301,18 +299,14 @@ class QuestNav {
   nt::NetworkTableInstance m_ntInstance;
 
   // NetworkTables topics
-  std::unique_ptr<nt::ProtobufSubscriber<
-      questnav::protos::data::ProtobufQuestNavFrameData>>
+  std::unique_ptr<nt::StructSubscriber<questnav::QuestNavFrameData>>
       m_frameDataSubscriber;
-  std::unique_ptr<nt::ProtobufSubscriber<
-      questnav::protos::data::ProtobufQuestNavDeviceData>>
+  std::unique_ptr<nt::StructSubscriber<questnav::QuestNavDeviceData>>
       m_deviceDataSubscriber;
-  std::unique_ptr<nt::ProtobufSubscriber<
-      questnav::protos::commands::ProtobufQuestNavCommandResponse>>
+  std::unique_ptr<nt::StructSubscriber<questnav::QuestNavCommandResponse>>
       m_responseSubscriber;
   std::unique_ptr<nt::StringSubscriber> m_versionSubscriber;
-  std::unique_ptr<nt::ProtobufPublisher<
-      questnav::protos::commands::ProtobufQuestNavCommand>>
+  std::unique_ptr<nt::StructPublisher<questnav::QuestNavCommand>>
       m_requestPublisher;
 
   // State tracking

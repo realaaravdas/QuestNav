@@ -55,68 +55,63 @@ repositories {
     }
 }
 
-dependencies {
-    // WPILib dependencies
-    implementation "edu.wpi.first.wpilibj:wpilibj-java:${wpilibVersion}"
-    implementation "edu.wpi.first.wpiutil:wpiutil-java:${wpilibVersion}"
-    implementation "edu.wpi.first.wpimath:wpimath-java:${wpilibVersion}"
-    implementation "edu.wpi.first.ntcore:ntcore-java:${wpilibVersion}"
-    implementation "edu.wpi.first.wpiunits:wpiunits-java:${wpilibVersion}"
-    implementation "com.google.protobuf:protobuf-java:4.31.1"
-    implementation "us.hebi.quickbuf:quickbuf-runtime:1.4"
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.2'
+    dependencies {
+        // WPILib dependencies
+        implementation "edu.wpi.first.wpilibj:wpilibj-java:${wpilibVersion}"
+        implementation "edu.wpi.first.wpiutil:wpiutil-java:${wpilibVersion}"
+        implementation "edu.wpi.first.wpimath:wpimath-java:${wpilibVersion}"
+        implementation "edu.wpi.first.ntcore:ntcore-java:${wpilibVersion}"
+        implementation "edu.wpi.first.wpiunits:wpiunits-java:${wpilibVersion}"
 
-    // Test dependencies
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
+        // Test dependencies
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
 
-// C++ Configuration
-apply plugin: 'edu.wpi.first.NativeUtils'
+    // C++ Configuration
+    apply plugin: 'edu.wpi.first.NativeUtils'
 
-model {
-    components {
-        questnavlib(NativeLibrarySpec) {
-            targetPlatform wpi.platforms.roborio
-            targetPlatform wpi.platforms.linuxathena
-            targetPlatform wpi.platforms.linuxarm32
-            targetPlatform wpi.platforms.linuxarm64
-            targetPlatform wpi.platforms.osxuniversal
-            targetPlatform wpi.platforms.windowsx86-64
-            targetPlatform wpi.platforms.linuxx86-64
+    model {
+        components {
+            questnavlib(NativeLibrarySpec) {
+                targetPlatform wpi.platforms.roborio
+                targetPlatform wpi.platforms.linuxathena
+                targetPlatform wpi.platforms.linuxarm32
+                targetPlatform wpi.platforms.linuxarm64
+                targetPlatform wpi.platforms.osxuniversal
+                targetPlatform wpi.platforms.windowsx86-64
+                targetPlatform wpi.platforms.linuxx86-64
 
-            sources {
-                cpp {
-                    source {
-                        srcDirs = ['src/main/native/cpp']
-                        include '**/*.cpp', '**/*.cc'
-                        exclude 'examples/**'
-                    }
-                    exportedHeaders {
-                        srcDirs = ['src/main/native/include']
-                        include '**/*.h', '**/*.hpp'
+                sources {
+                    cpp {
+                        source {
+                            srcDirs = ['src/main/native/cpp']
+                            include '**/*.cpp', '**/*.cc'
+                            exclude 'examples/**'
+                        }
+                        exportedHeaders {
+                            srcDirs = ['src/main/native/include']
+                            include '**/*.h', '**/*.hpp'
+                        }
                     }
                 }
-            }
 
-            binaries.all {
-                // WPILib dependencies - these will be provided by the robot project
-                nativeUtils.useRequiredLibrary(it, 'wpilib_shared')
-                
-                // Compiler flags
-                if (toolChain in [Gcc, Clang]) {
-                    cppCompiler.args '-std=c++20'
-                    cppCompiler.args '-Wno-unused-parameter'
-                    cppCompiler.args '-Wno-deprecated-declarations'
-                    linker.args '-lprotobuf'
-                } else if (toolChain in VisualCpp) {
-                    cppCompiler.args '/std:c++20'
-                    linker.args 'libprotobuf.lib'
+                binaries.all {
+                    // WPILib dependencies - these will be provided by the robot project
+                    nativeUtils.useRequiredLibrary(it, 'wpilib_shared')
+                    
+                    // Compiler flags
+                    if (toolChain in [Gcc, Clang]) {
+                        cppCompiler.args '-std=c++20'
+                        cppCompiler.args '-Wno-unused-parameter'
+                        cppCompiler.args '-Wno-deprecated-declarations'
+                    } else if (toolChain in VisualCpp) {
+                        cppCompiler.args '/std:c++20'
+                    }
                 }
             }
         }
     }
-}
 
 ext {
     nativeName = 'questnavlib'

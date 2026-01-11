@@ -1,11 +1,3 @@
-/*
-* QUESTNAV
-  https://github.com/QuestNav
-* Copyright (C) 2025 QuestNav
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the MIT License as published.
-*/
 package gg.questnav.questnav;
 
 import static edu.wpi.first.units.Units.Microseconds;
@@ -13,22 +5,20 @@ import static edu.wpi.first.units.Units.Milliseconds;
 import static edu.wpi.first.units.Units.Seconds;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.proto.Pose3dProto;
-import edu.wpi.first.math.proto.Geometry3D;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.ProtobufPublisher;
-import edu.wpi.first.networktables.ProtobufSubscriber;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.StructSubscriber;
 import edu.wpi.first.networktables.PubSubOption;
 import edu.wpi.first.networktables.StringSubscriber;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
-import gg.questnav.questnav.protos.generated.Commands;
-import gg.questnav.questnav.protos.generated.Data;
-import gg.questnav.questnav.protos.wpilib.CommandProto;
-import gg.questnav.questnav.protos.wpilib.CommandResponseProto;
-import gg.questnav.questnav.protos.wpilib.DeviceDataProto;
-import gg.questnav.questnav.protos.wpilib.FrameDataProto;
+import gg.questnav.questnav.structs.QuestNavStructs;
+import gg.questnav.questnav.structs.QuestNavStructs.QuestNavCommand;
+import gg.questnav.questnav.structs.QuestNavStructs.QuestNavCommandResponse;
+import gg.questnav.questnav.structs.QuestNavStructs.QuestNavCommandType;
+import gg.questnav.questnav.structs.QuestNavStructs.QuestNavDeviceData;
+import gg.questnav.questnav.structs.QuestNavStructs.QuestNavFrameData;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
@@ -124,65 +114,42 @@ public class QuestNav {
   /** NetworkTable for Quest navigation data */
   private final NetworkTable questNavTable = nt4Instance.getTable("QuestNav");
 
-  /** Protobuf instance for CommandResponse */
-  private final CommandResponseProto commandResponseProto = new CommandResponseProto();
-
-  /** Protobuf instance for Command */
-  private final CommandProto commandProto = new CommandProto();
-
-  /** Protobuf instance for Pose3d */
-  private final Pose3dProto pose3dProto = new Pose3dProto();
-
-  /** Protobuf instance for device data */
-  private final DeviceDataProto deviceDataProto = new DeviceDataProto();
-
-  /** Protobuf instance for frame data */
-  private final FrameDataProto frameDataProto = new FrameDataProto();
-
   /** Subscriber for command response */
-  private final ProtobufSubscriber<Commands.ProtobufQuestNavCommandResponse> responseSubscriber =
+  private final StructSubscriber<QuestNavCommandResponse> responseSubscriber =
       questNavTable
-          .getProtobufTopic("response", commandResponseProto)
+          .getStructTopic("response", QuestNavCommandResponse.class)
           .subscribe(
-              Commands.ProtobufQuestNavCommandResponse.newInstance(),
+              new QuestNavCommandResponse(),
               PubSubOption.periodic(0.05),
               PubSubOption.sendAll(true),
               PubSubOption.pollStorage(20));
 
   /** Subscriber for frame data */
-  private final ProtobufSubscriber<Data.ProtobufQuestNavFrameData> frameDataSubscriber =
+  private final StructSubscriber<QuestNavFrameData> frameDataSubscriber =
       questNavTable
-          .getProtobufTopic("frameData", frameDataProto)
+          .getStructTopic("frameData", QuestNavFrameData.class)
           .subscribe(
-              Data.ProtobufQuestNavFrameData.newInstance(),
+              new QuestNavFrameData(),
               PubSubOption.periodic(0.01),
               PubSubOption.sendAll(true),
               PubSubOption.pollStorage(20));
 
   /** Subscriber for device data */
-  private final ProtobufSubscriber<Data.ProtobufQuestNavDeviceData> deviceDataSubscriber =
+  private final StructSubscriber<QuestNavDeviceData> deviceDataSubscriber =
       questNavTable
-          .getProtobufTopic("deviceData", deviceDataProto)
-          .subscribe(Data.ProtobufQuestNavDeviceData.newInstance());
+          .getStructTopic("deviceData", QuestNavDeviceData.class)
+          .subscribe(new QuestNavDeviceData());
 
   /** Subscriber for QuestNav app version */
   private final StringSubscriber versionSubscriber =
       questNavTable.getStringTopic("version").subscribe("unknown");
 
   /** Publisher for command requests */
-  private final ProtobufPublisher<Commands.ProtobufQuestNavCommand> requestPublisher =
-      questNavTable.getProtobufTopic("request", commandProto).publish();
+  private final StructPublisher<QuestNavCommand> requestPublisher =
+      questNavTable.getStructTopic("request", QuestNavCommand.class).publish();
 
   /** Cached request to lessen GC pressure */
-  private final Commands.ProtobufQuestNavCommand cachedCommandRequest =
-      Commands.ProtobufQuestNavCommand.newInstance();
-
-  /** Cached pose reset request to lessen GC pressure */
-  private final Commands.ProtobufQuestNavPoseResetPayload cachedPoseResetPayload =
-      Commands.ProtobufQuestNavPoseResetPayload.newInstance();
-
-  /** Cached proto pose (for reset requests) to lessen GC pressure */
-  private final Geometry3D.ProtobufPose3d cachedProtoPose = Geometry3D.ProtobufPose3d.newInstance();
+  private final QuestNavCommand cachedCommandRequest = new QuestNavCommand();
 
   /** Last sent request id */
   private int lastSentRequestId = 0; // Should be the same on the backend
@@ -204,7 +171,7 @@ public class QuestNav {
    *
    * <ul>
    *   <li>NetworkTables communication on the "QuestNav" table
-   *   <li>Protobuf serialization for efficient data transfer
+   *   <li>Struct serialization for efficient data transfer
    *   <li>Cached objects to minimize garbage collection
    *   <li>Subscribers for frame data, device data, and command responses
    *   <li>Publisher for sending commands to the Quest
@@ -302,16 +269,11 @@ public class QuestNav {
    * @see edu.wpi.first.math.geometry.Pose2d
    */
   public void setPose(Pose3d pose) {
-    cachedProtoPose.clear(); // Clear instead of creating new
-    pose3dProto.pack(cachedProtoPose, pose);
-    cachedCommandRequest.clear();
-    var requestToSend =
-        cachedCommandRequest
-            .setType(Commands.QuestNavCommandType.POSE_RESET)
-            .setCommandId(++lastSentRequestId)
-            .setPoseResetPayload(cachedPoseResetPayload.clear().setTargetPose(cachedProtoPose));
+    cachedCommandRequest.type = QuestNavCommandType.PoseReset;
+    cachedCommandRequest.commandId = ++lastSentRequestId;
+    cachedCommandRequest.targetPose = pose;
 
-    requestPublisher.set(requestToSend);
+    requestPublisher.set(cachedCommandRequest);
   }
 
   /**
@@ -337,17 +299,17 @@ public class QuestNav {
    *   <li><strong>0-10%:</strong> Critical - immediate charging required
    * </ul>
    *
-   * @return An {@link OptionalInt} containing the battery percentage (0-100), or empty if no device
+   * @return An {@link OptionalDouble} containing the battery percentage (0-100), or empty if no device
    *     data is available or Quest is disconnected
    * @see #isConnected()
    * @see #getLatency()
    */
-  public OptionalInt getBatteryPercent() {
-    Data.ProtobufQuestNavDeviceData latestDeviceData = deviceDataSubscriber.get();
-    if (latestDeviceData != null) {
-      return OptionalInt.of(latestDeviceData.getBatteryPercent());
+  public OptionalDouble getBatteryPercent() {
+    QuestNavDeviceData latestDeviceData = deviceDataSubscriber.get();
+    if (deviceDataSubscriber.getTopic().exists()) {
+      return OptionalDouble.of(latestDeviceData.batteryPercent);
     }
-    return OptionalInt.empty();
+    return OptionalDouble.empty();
   }
 
   /**
@@ -356,9 +318,9 @@ public class QuestNav {
    * @return The frame count value
    */
   public OptionalInt getFrameCount() {
-    Data.ProtobufQuestNavFrameData latestFrameData = frameDataSubscriber.get();
-    if (latestFrameData != null) {
-      return OptionalInt.of(latestFrameData.getFrameCount());
+    QuestNavFrameData latestFrameData = frameDataSubscriber.get();
+    if (frameDataSubscriber.getTopic().exists()) {
+      return OptionalInt.of(latestFrameData.frameCount);
     }
     return OptionalInt.empty();
   }
@@ -369,9 +331,9 @@ public class QuestNav {
    * @return The tracking lost counter value
    */
   public OptionalInt getTrackingLostCounter() {
-    Data.ProtobufQuestNavDeviceData latestDeviceData = deviceDataSubscriber.get();
-    if (latestDeviceData != null) {
-      return OptionalInt.of(latestDeviceData.getTrackingLostCounter());
+    QuestNavDeviceData latestDeviceData = deviceDataSubscriber.get();
+    if (deviceDataSubscriber.getTopic().exists()) {
+      return OptionalInt.of(latestDeviceData.trackingLostCounter);
     }
     return OptionalInt.empty();
   }
@@ -424,9 +386,9 @@ public class QuestNav {
    * @see #getAllUnreadPoseFrames()
    */
   public OptionalDouble getAppTimestamp() {
-    Data.ProtobufQuestNavFrameData latestFrameData = frameDataSubscriber.get();
-    if (latestFrameData != null) {
-      return OptionalDouble.of(latestFrameData.getTimestamp());
+    QuestNavFrameData latestFrameData = frameDataSubscriber.get();
+    if (frameDataSubscriber.getTopic().exists()) {
+      return OptionalDouble.of(latestFrameData.timestamp);
     }
     return OptionalDouble.empty();
   }
@@ -466,9 +428,9 @@ public class QuestNav {
    * @see #getAllUnreadPoseFrames()
    */
   public boolean isTracking() {
-    var frameData = frameDataSubscriber.get();
-    if (frameData != null) {
-      return frameData.getIsTracking();
+    QuestNavFrameData frameData = frameDataSubscriber.get();
+    if (frameDataSubscriber.getTopic().exists()) {
+      return frameData.isTracking;
     }
     return false; // Return false if no data for failsafe
   }
@@ -529,14 +491,15 @@ public class QuestNav {
     var frameDataArray = frameDataSubscriber.readQueue();
     var result = new PoseFrame[frameDataArray.length];
     for (int i = 0; i < result.length; i++) {
-      var frameData = frameDataArray[i];
+      var timestampedData = frameDataArray[i];
+      var frameData = timestampedData.value;
       result[i] =
           new PoseFrame(
-              pose3dProto.unpack(frameData.value.getPose3D()),
-              Microseconds.of(frameData.serverTime).in(Seconds),
-              frameData.value.getTimestamp(),
-              frameData.value.getFrameCount(),
-              frameData.value.getIsTracking());
+              frameData.pose,
+              Microseconds.of(timestampedData.serverTime).in(Seconds),
+              frameData.timestamp,
+              frameData.frameCount,
+              frameData.isTracking);
     }
     return result;
   }
@@ -585,11 +548,11 @@ public class QuestNav {
    */
   public void commandPeriodic() {
     checkVersionMatch();
-    Commands.ProtobufQuestNavCommandResponse[] responses = responseSubscriber.readQueueValues();
+    var responses = responseSubscriber.readQueueValues();
 
-    for (Commands.ProtobufQuestNavCommandResponse response : responses) {
-      if (!response.getSuccess()) {
-        DriverStation.reportError("QuestNav command failed!\n" + response.getErrorMessage(), false);
+    for (QuestNavCommandResponse response : responses) {
+      if (!response.success) {
+        DriverStation.reportError("QuestNav command failed!\n" + response.errorMessage, false);
       }
     }
   }
