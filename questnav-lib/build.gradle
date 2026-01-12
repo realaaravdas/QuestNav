@@ -60,8 +60,7 @@ dependencies {
     implementation "edu.wpi.first.wpimath:wpimath-java:${wpilibVersion}"
     implementation "edu.wpi.first.ntcore:ntcore-java:${wpilibVersion}"
     implementation "edu.wpi.first.wpiunits:wpiunits-java:${wpilibVersion}"
-    implementation "com.google.protobuf:protobuf-java:4.31.1"
-    implementation "us.hebi.quickbuf:quickbuf-runtime:1.4"
+    // Protobuf dependencies removed as we are now using Structs
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.2'
 
     // Test dependencies
